@@ -22,8 +22,11 @@ def create_installer_mac():
             dest,
             path('${freeze_dir}')
         ]
-        if is_mac() and int(platform.mac_ver()[0].split('.')[1]) >= 15:
-            pdata.insert(1, '--no-internet-enable')
+        # Patch from https://github.com/pm990320/fbs/tree/patch-1
+        if is_mac():
+            major, minor, patch = platform.mac_ver()[0].split('.')
+            if (int(major) == 10 and int(minor) >= 15) or int(major) >= 11:
+                pdata.insert(1, '--no-internet-enable')
         check_call(pdata, stdout=DEVNULL)
     except:
         if dest_existed:
