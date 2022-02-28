@@ -12,6 +12,7 @@ import os
 _CERTIFICATE_PATH = 'src/sign/windows/certificate.pfx'
 _TO_SIGN = ('.exe', '.cab', '.dll', '.ocx', '.msi', '.xpi')
 
+
 def sign_windows():
     if not exists(path(_CERTIFICATE_PATH)):
         raise FbsError(
@@ -30,13 +31,14 @@ def sign_windows():
             if extension in _TO_SIGN:
                 sign_file(join(subdir, file_))
 
+
 def sign_file(file_path, description='', url=''):
     helper = _SignHelper.instance()
     if not helper.is_signed(file_path):
         helper.sign(file_path, description, url)
 
-class _SignHelper:
 
+class _SignHelper:
     _INSTANCE = None
 
     @classmethod
@@ -73,7 +75,8 @@ class _SignHelper:
         makedirs(dirname(path_in_cache), exist_ok=True)
         copy(file_path, path_in_cache)
         hash_ = self._hash(path_in_cache)
-        self._run_signtool(path_in_cache)
+        self._run_signtool(path_in_cache, 'sha1')
+        self._run_signtool(path_in_cache, 'sha256')
         with open(self._get_json_path(file_path), 'w') as f:
             json.dump({
                 'description': description,
@@ -87,7 +90,7 @@ class _SignHelper:
     def _get_path_in_cache(self, file_path):
         return join(self._cache_dir, basename(file_path))
 
-    def _run_signtool(self, file_path, description='', url=''):
+    def _run_signtool(self, file_path, digest_alg, description='', url=''):
         password = SETTINGS['windows_sign_pass']
         args = [
             'signtool', 'sign', '/f', path(_CERTIFICATE_PATH), '/p', password
@@ -98,11 +101,9 @@ class _SignHelper:
             args.extend(['/d', description])
         if url:
             args.extend(['/du', url])
+        args.extend(['/as', '/fd', digest_alg, '/td', digest_alg])
         args.append(file_path)
         run(args, check=True, stdout=DEVNULL)
-        args_sha256 = \
-            args[:-1] + ['/as', '/fd', 'sha256', '/td', 'sha256'] + args[-1:]
-        run(args_sha256, check=True, stdout=DEVNULL)
 
     def _hash(self, file_path):
         bufsize = 65536

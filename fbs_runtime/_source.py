@@ -3,14 +3,15 @@ This module contains functions that should only be called by module `fbs`, or
 when running from source.
 """
 
+import os
+from os.path import join, normpath, dirname, pardir, exists
+from pathlib import Path
+
 from fbs_runtime import FbsError
 from fbs_runtime._fbs import get_default_profiles, get_core_settings, \
     filter_public_settings
 from fbs_runtime._settings import load_settings
-from os.path import join, normpath, dirname, pardir, exists
-from pathlib import Path
 
-import os
 
 def get_project_dir():
     result = Path(os.getcwd())
@@ -23,11 +24,18 @@ def get_project_dir():
         'Was expecting src/main/python.'
     )
 
+
 def get_resource_dirs(project_dir):
+    result = [path(project_dir, 'src/main/icons')]
     resources = path(project_dir, 'src/main/resources')
-    result = [join(resources, profile) for profile in get_default_profiles()]
-    result.append(path(project_dir, 'src/main/icons'))
+    result.extend(
+        join(resources, profile)
+        # Resource dirs are listed most-specific first whereas profiles are
+        # listed most-specific last. We therefore need to reverse the order:
+        for profile in reversed(get_default_profiles())
+    )
     return result
+
 
 def load_build_settings(project_dir):
     core_settings = get_core_settings(project_dir)
@@ -36,6 +44,7 @@ def load_build_settings(project_dir):
     all_settings = load_settings(json_paths, core_settings)
     return filter_public_settings(all_settings)
 
+
 def get_settings_paths(project_dir, profiles):
     return list(filter(exists, (
         path_fn('src/build/settings/%s.json' % profile)
@@ -43,9 +52,11 @@ def get_settings_paths(project_dir, profiles):
         for profile in profiles
     )))
 
+
 def default_path(path_str):
     defaults_dir = join(dirname(__file__), pardir, 'fbs', '_defaults')
     return path(defaults_dir, path_str)
+
 
 def path(base_dir, path_str):
     return normpath(join(base_dir, *path_str.split('/')))
